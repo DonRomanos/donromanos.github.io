@@ -740,3 +740,5 @@ Use Concepts to define your Function Interfaces! They provide clearer error mess
 * [What concepts cannot do](https://brevzin.github.io/c++/2018/10/20/concepts-declarations/)
 * [How to test concepts](https://andreasfertig.blog/2020/08/cpp20-concepts-testing-constrained-functions/)
 * [A little more (or everything) about the requires keyword](https://akrzemi1.wordpress.com/2020/01/29/requires-expression/)
+
+And remember: "This is the way!" :)
