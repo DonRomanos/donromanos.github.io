@@ -4,8 +4,6 @@ title: A little something about RPC-Calls and Serialization
 tags: C++, Serialization, RPC, Protobuf, Cereal, Bitsery
 ---
 
-# A little something about RPC-Calls and Serialization
-
 Or what is the meaning of those bytes? 
 
 The Problem in a concrete case: We have two separate processes that run on the same platform but in different security environments. The compilers that are used are different as well. Both processes communicate through an sdk that works a little like a driver. We can send a message from one side containing data in a previously allocated memory segment and receive the reponse in the same way.
