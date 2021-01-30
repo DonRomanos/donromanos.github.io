@@ -292,6 +292,6 @@ Well we never actually solved that part. We settled on some convenience, but wit
 
 Maybe with C++23 we get compile time reflection which offers us whole new possibilities that might solve this problem. For now if you really need to do it, I think a code generator based on `llvm` looks most promising to me. Maybe I will find the time and post about it in another article.
 
-My most important learning here was to adapt your approach to your requirements, the more you know about them the better you can choose. We implemented both, a simple version of what those libraries do, as well as what we finally did. That was very valuable to have as comparison. 
+My most important learning here was to adapt your approach to your requirements, the more you know about them the better you can choose. We implemented both, a simple version of what those libraries do, as well as our final approach I described above. That was very valuable to have as comparison and make a good decision. 
 
-And rembemr: This is the way! (At least our way, for you it might look different based on your requirements ;))
+And remember: **This is the way!** (At least our way, for you it might look different based on your requirements ;))
