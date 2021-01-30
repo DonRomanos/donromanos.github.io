@@ -219,36 +219,79 @@ Remember the problem I talked about in the beginning? Actually we can add some m
 
 So considering these we decided that we would not follow the approach mentioned before. Instead we provide our own overload based solution taylored exactly to the needs above. This means we do not have this nice symmetrie mentioned above, but we will have to define our serialize and deserialize functions independently from eacht other. Since we dont plan to add many types in the future this was alright for us. And of course we covered the implementation with tests to make sure they are symmetrical.
 
-Here is a very simplified version of our implementation:
+Here is a very simplified version of our serialization implementation:
 
 ```cpp
+class BinarySerializer
+{
+    BinarySerliazer(std::vector<uint8_t>& buffer) : buffer(buffer){};
 
+    template<typename T, typename... Args>
+    void serialize(const T& first, Args&&... args)
+    {
+        serialize(first);
+        serialize(args);
+    }
+
+    // This is an example for int, we had one overload for all trivially copyable types using sfinae,
+    // As well as one for vector and string, we did not need more.
+    void serialize(int in)
+    {
+        buffer.push_back(reinterpret_cast<uint8_t*>(&in), reinterpret_cast<uint8_t*>(&in) + sizeof(in));
+    }
+}
 ```
 
-
-
-
-
-What I would like to do is somehow tie together the method that I am calling to the command that will executed in the secure environment.
-
-Ideally this would involve no more than:
+Very similar the deserialization:
 ```cpp
-register_command(&find_name, &find_name_secure)
+class BinaryDeserializer
+{
+    BinarySerliazer(std::vector<uint8_t>& buffer) : buffer(buffer){};
+
+    template<typename T>
+    T deserialize()
+    {
+        static_assert(sizeof(T), "Please provide a specialization for the type you want to deserialize into");
+    }
+
+    //... rest of the class
+}
+
+// This is an example for int, we had different specializations for different types, in overall there were like 5-6. We could treat all trivially copyable types together.
+// and had again implementations for vector and string.
+template<>
+int BinaryDeserializer::deserialize()
+{
+    return *reinterpret_cast<int*>(current_buffer_position);
+}
 ```
 
-And after this whenever I call `find_name` it would automatically construct the message containing a unique identifier as well as all the data I pass in. At the same time it would extend the switch for my case handle the reconstruction of the data, trigger the `find_name_secure` function, assemble the result into the response and voila we're done.
+With this approach this is how most of our Tests looked when we used the above classes:
+```cpp
+TEST(BinarySerialization, "Vector_can_be_serialized_and_deserialized")
+{
+    std::vector<uint8_t> buffer;
+    std::vector<int> expected = {1,2,4,6,8}; 
 
-Without some fancy things which might be valid depending on your use cases and resources this is not easily possible in C++. We would need some macro magic or a code generator in order to create the body of our `find_name` function. 
+    BinarySerializer(buffer).serialize(expected);
+    auto result = BinaryDeserializer(buffer).deserialize<std::vector<int> >();
 
-This is however not the main feature in my eyes, as long as it is simple I am completely okay with writing the function body of the `find_name` myself. The two most important features of this imaginary `register_command` function are in my eyes:
+    EXPECT_EQ(expected, result);
+}
+```
 
-* You don't have to modify two places to add a new message
-* You do not have to define a serialization and deserialization function independently
+So far I think this was a good decision for our codebase. We had quite compact code that is easy to understand. The downside is that our BinarySerializer and Deserializers are currently dependency magnets since we provide overloads for different types. So far this is not a problem for us, but time will tell.
 
-In both of those cases its easy to introduce errors since you have to modify the sender as well as the receiver and this is unwanted. So lets focus on how far we can get aiming for that goal.
+For future types we will probably use friend specialized template functions next to those types instead of in the serializer.
 
-# How close can we get?
+So far, so good. But we only tackled the serialization but what about the RPC part?
 
+# The suprising end
 
+Well we never actually solved that part. We settled on some convenience, but with the serialization in place our code was already pretty maintainable (at least for now). We thought about using some macro or template magic to create function bodies for us that would take care of all the forwarding. However with the current C++ facilities this is not easily possible (or at least we did not find a satisfying way).
 
+Maybe with C++23 we get compile time reflection which offers us whole new possibilities that might solve this problem. For now if you really need to do it, I think a code generator based on `llvm` looks most promising to me. Maybe I will find the time and post about it in another article.
 
+My most important learning here was to adapt your approach to your requirements, the more you know about them the better you can choose. We implemented both, a simple version of what those libraries do, as well as what we finally did. That was very valuable to have as comparison. 
+
+And rembemr: This is the way! (At least our way, for you it might look different based on your requirements ;))
