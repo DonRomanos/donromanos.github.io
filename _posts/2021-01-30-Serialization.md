@@ -92,14 +92,14 @@ Of course we are not the first ones to encounter those problems. People have wri
 
 RPC and Serialization
 
-* [Google Protocol-Buffers] (https://developers.google.com/protocol-buffers)
-* [Cap'n Proto] (https://capnproto.org/rpc.html)
+* [Google Protocol-Buffers](https://developers.google.com/protocol-buffers)
+* [Cap'n Proto](https://capnproto.org/rpc.html)
 
 Just Serialization
 
-* [Cereal] (https://uscilab.github.io/cereal/)
-* [Bitsery] (https://github.com/fraillt/bitsery)
-* [Boost Serialization] (https://www.boost.org/doc/libs/1_75_0/libs/serialization/doc/index.html)
+* [Cereal](https://uscilab.github.io/cereal/)
+* [Bitsery](https://github.com/fraillt/bitsery)
+* [Boost Serialization](https://www.boost.org/doc/libs/1_75_0/libs/serialization/doc/index.html)
 
 The division above also resembles the different approaches they took. `Protocol-Buffers` and `Cap'n Proto` use an external program and some definition files which will create the code required for serialization and handling rpc-calls for you. 
 
