@@ -1,3 +1,9 @@
+---
+layout: post
+title: A little something about RPC-Calls and Serialization
+tags: C++, Serialization, RPC, Protobuf, Cereal, Bitsery
+---
+
 # A little something about RPC-Calls and Serialization
 
 Or what is the meaning of those bytes? 
