@@ -11,6 +11,7 @@ A little while ago I wrote some code that was counting how many points of a give
 #include <array>
 
 struct Point
+
 {
     float x;
     float y;
@@ -134,19 +135,34 @@ This is one of the shortest and best implementations I can think of. Lets look a
 
 It is faster! So the best implementation also wins in execution time. Apparently the optimizer can do a really good job using the ranges implementation. A difference to the raw loop approach is here we have an inverted the loop order. With ranges we iterate first over the regions, while the original suggestion was to only iterate over the points once.
 
-Well lets compare:
+## Update (04.07.)
 
-## Raw loop with inverted order
+Did you notice anythin with the above code? It is actually only measuring the call to the counting function, but we are not assigning it to an actual result. This is an unfair comparison so lets fix it and add the assignment:
 
-The only change is that we switch the places of the two loops, iterating first over the smaller one with regions(4) then for each of them iterating over all the points(2000). This means that logically we have to perform more operations since we now need to iterate over all the points 4 times meaning we have to iterate over `4 x 2000 = 8000` elements in total. With the old approach we could break early when we had the region reducing the number of iterations.
+```
+  std::array<size_t, 4> counters{0,0,0,0};
+  for (auto _ : state) 
+  {
+    for( size_t i = 0; i < counters.size(); ++i)
+    {
+      counters[i] = std::ranges::count_if(points, [&regions, i](const auto& point){return regions[i].contains(point);});
+    }
+    benchmark::DoNotOptimize(counters[0]);
+    benchmark::DoNotOptimize(counters[1]);
+    benchmark::DoNotOptimize(counters[2]);
+    benchmark::DoNotOptimize(counters[3]);
+  }
+```
 
-[Here](https://quick-bench.com/q/Pj8H8SDcFnAqltSZfmCe4oaG82k) are the results:
+With this the [results](https://quick-bench.com/q/2JNYeX_e8txGNpafLduC8SSRNbQ) change.
 
-![../images/loop_comparison_inverted_loops.png](../images/loop_comparison_inverted_loops.png)
+I also added an implementation using the stl which does exactly the same as the ranges implementation and also performs the same.
 
-And we have a winner! There is a tremendous difference to our range implementation as well as the original raw loop and all we did was invert the order of the loops. My guess for the reason is now there is no branching anymore, the entire operation is completely predictable for the processor, no need for a branch predictor and we have our data laid out optimally in cache. I cannot think of a way to beat that.
+These are the final results. So we could not beat the raw loop implementation in the end, however while doing this I learned a lot about benchmarks.
 
-I could only tell after measuring the different approaches. Therefore whenever somebody (or you) reduces the expressiveness of the code with the argument of performance they should be able to prove it. It is worth spending some time to investigate it especially if you have such handy tools like quick-bench available.
+I introduced some bugs (forgetting `DoNotOptionmize`) and unfair comparisons leaving out some operations till I got to the final result.
+
+Whenever somebody (or you) reduces the expressiveness of the code with the argument of performance they should be able to prove it. It is definitely worth spending some time to investigate it especially if you have such handy tools like quick-bench available. You might learn something like me ;).
 
 ## Further read
 
