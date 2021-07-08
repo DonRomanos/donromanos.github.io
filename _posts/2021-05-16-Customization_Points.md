@@ -130,14 +130,116 @@ This works because we defined a function swap in our own namespace which will be
 This approach has some problems. 
 * It is very cumbersome and easy to get wrong
 * Sometimes you don't own the namespace of the classes you want to swap(e.g. std or a 3rd party)
-* Since we provide our customization through the public interface we cannot enforce any constrains that might be useful
+* Since we provide our customization through the public interface we cannot enforce any constrainsts that might be useful
 
-// illustrate problem with begin + end
+Similar to that we could also let the user specialize a behavior by adding an overload, or if we have a templated function using template specialization.
 
-So question is, can we do better? Yes we can, but how? Lets go back a bit. Remember how the `std::pmr::memory_resource` works? Here we have two dedicated entities, one the user has to implement: `do_allocate` and one that will be invoked by the `pmr::allocator`: `allocate`. 
+```cpp
+template<typename T>
+void customizeThisFunction(T&){};
+
+// We can add a specialized template
+template<>
+void customizeThisFunction(double& in){};
+
+// Or even overload directly
+void customizeThisFunction(int& ){};
+```
+
+This is alright if you do not have any constraints that you want to enforce on the function, however if you have some requirements or preconditions those customization points will directly bypass them.
+
+ Remember how the `std::pmr::memory_resource` works? Here we have two dedicated entities, one the user has to implement: `do_allocate` and one that will be invoked by the `pmr::allocator`: `allocate`. 
 
 This separation allows us to enforce our invariants and still allow the user to customize the behavior.
 
+## Customizing Behavior and Enforcing a Constraint = Customization Point Object
+
+So what do we actually want? Lets say we have a `serialize` function that should be customizable but enforce that the type is `std::is_trivially_copyable`. Something like this:
+
+```cpp
+namespace mine
+{
+  struct Thing
+  {};
+  
+  void serialize(Thing)
+  {}
+
+}
+
+template<typename T>
+void serialize(T) requires std::is_trivially_copyable<T>::value 
+{
+// ...
+}
+
+int main()
+{
+    // We want both of these calls to dispatch first to the above function for constraint checking only then we want it to call the user specified function
+    serialize(mine::Thing{});
+    serialize(11);
+}
+```
+
+The trick that we can use is instead of defining our global serialize function as a free function we will instead declare it as a global variable. We use C++17s inline variables to avoid ODR Violations. 
+
+For the functionality we overload `operator()` perfoming the constraint checking and dispatching then to our dedicated implementation:
+
+```cpp
+#include <type_traits>
+#include <utility>
+
+namespace mine
+{
+  struct Thing
+  {};
+  
+  void serialize(Thing)
+  {}
+}
+
+namespace detail
+{
+  template<typename T>
+  void serialize(T)
+  {
+    // actual implementation that does something!
+  }
+
+  struct serialize_fn
+  {
+      template<typename T>
+      constexpr void operator()(T&& obj) const requires std::is_trivially_copyable<T>::value
+      {
+          serialize(std::forward<T>(obj));
+      }
+  };
+}
+
+inline constexpr detail::serialize_fn serialize{}; 
+
+int main()
+{
+    // We want all of these calls to dispatch first to the above function for constraint checking
+    serialize(mine::Thing{});
+    serialize(11);
+}
+
+```
+
+
+### How it works
+
+The secret lies in how C++ performs name lookup. From [cppreference](https://en.cppreference.com/w/cpp/language/lookup):
+
+
+>For function and function template names, name lookup can associate multiple declarations with the same name, and may obtain additional declarations from argument-dependent lookup. Template argument deduction may also apply, and the set of declarations is passed to overload resolution, which selects the declaration that will be used. Member access rules, if applicable, are considered only after name lookup and overload resolution.
+
+>For all other names (variables, namespaces, classes, etc), name lookup must produce a single declaration in order for the program to compile. Lookup for a name in a scope finds all declarations of that name, with one exception, known as the "struct hack" or "type/non-type hiding": Within the same scope, some occurrences of a name may refer to a declaration of a class/struct/union/enum that is not a typedef, while all other occurrences of the same name either all refer to the same variable, non-static data member (since C++14), or enumerator, or they all refer to possibly overloaded function or function template names. In this case, there is no error, but the type name is hidden from lookup (the code must use elaborated type specifier to access it).
+
+In other words: Now that our name refers to a global function object no adl will be performed and C++ will always select our global function object as entrypoint, just as we intended.
+
+Thats it.
 
 ## Resources
 
