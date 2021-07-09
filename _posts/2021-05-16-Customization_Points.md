@@ -100,7 +100,7 @@ class my_memory_resource : public std::pmr::memory_resource
 int main()
 {
     my_memory_resource pool;
-    std::pmr::vector<int>{{1,2,3,4}, &pool};
+    std::pmr::vector<int>{ {1,2,3,4}, &pool};
 }
 ```
 
